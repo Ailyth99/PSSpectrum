@@ -1,4 +1,5 @@
-import wx,os,subprocess,threading,shutil,sys
+
+import wx,os,sys,subprocess,threading,shutil
 
 def get_base_path():
     try:
@@ -18,8 +19,36 @@ DEFAULT_HEIGHT = 448
 DEFAULT_BITRATE = '8000'
 
 SEQUENCE_END_CODE = b'\x00\x00\x01\xb7'
+USER_DATA_START_CODE = b'\x00\x00\x01\xb2'
+GOP_START_CODE = b'\x00\x00\x01\xb8'
+METADATA_COMMENT = "==== Created with PSSpectrum. Powered by FFMPEG, PS2STR, and VGMSTREAM.|||https://github.com/Ailyth99/PSSpectrum ===="
+
+def inject_metadata_to_m2v(m2v_path):
+
+    try:
+        with open(m2v_path, 'rb') as f:
+            content = f.read()
+    except FileNotFoundError:
+        return False, f"M2V file '{os.path.basename(m2v_path)}' not found for metadata injection."
+        
+    insertion_point = content.find(GOP_START_CODE)
+    if insertion_point == -1:
+        return False, "Could not find GOP start code (000001B8) in M2V file."
+    
+    encoded_comment = METADATA_COMMENT.encode('ascii')
+    payload = USER_DATA_START_CODE + encoded_comment
+    new_content = content[:insertion_point] + payload + content[insertion_point:]
+    
+    try:
+        with open(m2v_path, 'wb') as f:
+            f.write(new_content)
+    except IOError as e:
+        return False, f"Failed to write to M2V file during metadata injection: {e}"
+        
+    return True, f"Successfully injected metadata comment ({len(payload)} bytes)."
 
 def append_sequence_end_code_if_missing(m2v_path):
+
     try:
         file_size = os.path.getsize(m2v_path)
         
@@ -42,6 +71,7 @@ def append_sequence_end_code_if_missing(m2v_path):
     except Exception as e:
         return False, f"An error occurred while checking or appending sequence end code: {e}"
 
+#Main Window
 class PSSConverterFrame(wx.Frame):
     def __init__(self, *args, **kw):
         super(PSSConverterFrame, self).__init__(*args, **kw)
@@ -167,7 +197,6 @@ class PSSConverterFrame(wx.Frame):
     
     def check_dependencies(self):
         missing = []
-        # Now checks the absolute paths
         for exe_path in [FFMPEG_EXE, PS2STR_EXE, VGMSTREAM_CLI_EXE]:
             if not os.path.exists(exe_path):
                 missing.append(os.path.basename(exe_path))
@@ -243,22 +272,26 @@ class PSSConverterFrame(wx.Frame):
             cmd = [FFMPEG_EXE, '-i', input_file, '-c:v', 'mpeg2video', '-profile:v', '4', '-level:v', '8', '-b:v', bitrate_k, '-bufsize', '1835k', '-maxrate', bitrate_k, '-minrate', bitrate_k, '-color_range', 'tv', '-colorspace', 'smpte170m', '-color_trc', 'smpte170m', '-color_primaries', 'smpte170m', '-field_order', 'progressive', '-s', f'{width}x{height}', '-an', '-y', m2v_file, '-vn', '-acodec', 'pcm_s16le', '-ar', '48000', '-ac', '2', '-y', wav_file]
             if not self.run_command(cmd): raise Exception("FFMPEG execution failed!")
             
-            self.log_message("\n--- Key Step: Appending sequence end code to M2V file ---\n")
+            self.log_message("\n--- Step 2: Injecting metadata into M2V file ---\n")
+            success, message = inject_metadata_to_m2v(m2v_file)
+            self.log_message(message + "\n")
+            if not success: raise Exception("Failed to inject metadata into M2V file!")
+
+            self.log_message("\n--- Step 3: Appending sequence end code to M2V file ---\n")
             success, message = append_sequence_end_code_if_missing(m2v_file)
             self.log_message(message + "\n")
-            if not success:
-                raise Exception("Failed to append end code to M2V file!")
+            if not success: raise Exception("Failed to append end code to M2V file!")
 
-            self.log_message("\n--- Step 2: PS2STR is generating ADS audio ---\n")
+            self.log_message("\n--- Step 4: PS2STR is generating ADS audio ---\n")
             ps2str_e_cmd = [PS2STR_EXE, 'e', '-o', '-v', '-d', output_dir, wav_file]
             if not self.run_command(ps2str_e_cmd): raise Exception("PS2STR audio encoding failed!")
 
-            self.log_message(f"\n--- Step 3: Creating project file {os.path.basename(mux_file)} ---\n")
+            self.log_message(f"\n--- Step 5: Creating project file {os.path.basename(mux_file)} ---\n")
             with open(mux_file, 'w', encoding='utf-8') as f:
                 f.write(f'pss\n\n\tstream video:0\n\t\tinput "{os.path.abspath(m2v_file)}"\n\tend\n\n\tstream pcm:0\n\t\tinput "{os.path.abspath(ads_file)}"\n\tend\nend\n')
             self.log_message("Project file created successfully.\n")
             
-            self.log_message("\n--- Step 4: PS2STR is multiplexing PSS file ---\n")
+            self.log_message("\n--- Step 6: PS2STR is multiplexing PSS file ---\n")
             ps2str_m_cmd = [PS2STR_EXE, 'm', '-o', '-v', '-d', output_dir, mux_file]
             if not self.run_command(ps2str_m_cmd): raise Exception("PS2STR PSS multiplexing failed!")
             

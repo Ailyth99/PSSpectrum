@@ -8,7 +8,7 @@ A small tool to help you cconvert PSS videos for PlayStation 2 games.
 
 I've tested this on a bunch of PS2 games, and it works pretty well most of the time. However, some games use special PSS files, like those with multiple audio tracks, and this tool probably won't be able to handle those. If a conversion fails, you'll likely have to dig into the official PS2 SDK documentation for more info.
 
-###  How to Use It
+###  How to Use
 
 ![PSSpectrum Interface](https://pic1.imgdb.cn/item/690c14e33203f7be00daead5.png)
 
@@ -22,6 +22,7 @@ PSSpectrum/
 └─ main program
 ```
 
+注意，路径及文件名别带中文字符，否则必报错
 
 ### 🙏 Credits
 
