@@ -16,7 +16,7 @@ type App struct {
 	ctx context.Context
 }
 
-type ConversionProgress struct {
+type Progress struct {
 	Step    int    `json:"step"`
 	Message string `json:"message"`
 	Output  string `json:"output"`
@@ -31,7 +31,6 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
-// SelectFile opens a file dialog to select input file
 func (a *App) SelectFile(fileType string) (string, error) {
 	var filters []runtime.FileFilter
 	
@@ -55,7 +54,6 @@ func (a *App) SelectFile(fileType string) (string, error) {
 	return file, err
 }
 
-// SaveFile opens a save dialog
 func (a *App) SaveFile(defaultName string, fileType string) (string, error) {
 	var filters []runtime.FileFilter
 	
@@ -78,12 +76,10 @@ func (a *App) SaveFile(defaultName string, fileType string) (string, error) {
 	return file, err
 }
 
-// CheckDependencies checks if required executables exist
 func (a *App) CheckDependencies() map[string]bool {
 	exePath, _ := os.Executable()
 	baseDir := filepath.Dir(exePath)
 	
-	// 在开发模式下，使用当前工作目录
 	if strings.Contains(exePath, "go-build") || strings.Contains(exePath, "Temp") {
 		baseDir, _ = os.Getwd()
 	}
@@ -96,103 +92,95 @@ func (a *App) CheckDependencies() map[string]bool {
 	return result
 }
 
-// ConvertToPSS converts video to PSS format
-func (a *App) ConvertToPSS(inputFile, outputFile string, width, height, bitrate int, keepFiles bool) {
+func (a *App) ConvertToPSS(inFile, outFile string, w, h, br int, keep bool) {
 	go func() {
 		exePath, _ := os.Executable()
 		baseDir := filepath.Dir(exePath)
 		
-		// 在开发模式下，使用当前工作目录
 		if strings.Contains(exePath, "go-build") || strings.Contains(exePath, "Temp") {
 			baseDir, _ = os.Getwd()
 		}
 		
-		ffmpegPath := filepath.Join(baseDir, "ffmpeg.exe")
-		ps2strPath := filepath.Join(baseDir, "bin", "ps2str.exe")
+		ffmpeg := filepath.Join(baseDir, "ffmpeg.exe")
+		ps2str := filepath.Join(baseDir, "bin", "ps2str.exe")
 		
-		basePath := strings.TrimSuffix(outputFile, filepath.Ext(outputFile))
-		outputDir := filepath.Dir(outputFile)
-		m2vFile := basePath + ".m2v"
-		wavFile := basePath + ".wav"
-		adsFile := basePath + ".ads"
-		muxFile := basePath + ".mux"
+		base := strings.TrimSuffix(outFile, filepath.Ext(outFile))
+		outDir := filepath.Dir(outFile)
+		m2v := base + ".m2v"
+		wav := base + ".wav"
+		ads := base + ".ads"
+		mux := base + ".mux"
 		
-		// Step 1: FFMPEG conversion
-		a.emitProgress(1, "Generating M2V and WAV files with FFMPEG...", "")
+		a.emit(1, "Generating M2V and WAV files with FFMPEG...", "")
 		
-		bitrateStr := fmt.Sprintf("%dk", bitrate)
-		resolution := fmt.Sprintf("%dx%d", width, height)
+		brStr := fmt.Sprintf("%dk", br)
+		res := fmt.Sprintf("%dx%d", w, h)
 		
-		cmd := exec.Command(ffmpegPath,
-			"-i", inputFile,
+		cmd := exec.Command(ffmpeg,
+			"-i", inFile,
 			"-c:v", "mpeg2video",
 			"-profile:v", "4",
 			"-level:v", "8",
-			"-b:v", bitrateStr,
+			"-b:v", brStr,
 			"-bufsize", "1835k",
-			"-maxrate", bitrateStr,
-			"-minrate", bitrateStr,
+			"-maxrate", brStr,
+			"-minrate", brStr,
 			"-color_range", "tv",
 			"-colorspace", "smpte170m",
 			"-color_trc", "smpte170m",
 			"-color_primaries", "smpte170m",
 			"-field_order", "progressive",
-			"-s", resolution,
-			"-an", "-y", m2vFile,
+			"-s", res,
+			"-an", "-y", m2v,
 			"-vn", "-acodec", "pcm_s16le",
 			"-ar", "48000", "-ac", "2",
-			"-y", wavFile,
+			"-y", wav,
 		)
 		
-		// Hide console window on Windows
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			HideWindow:    true,
-			CreationFlags: 0x08000000, // CREATE_NO_WINDOW
-		}
-		
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			a.emitProgress(1, "", fmt.Sprintf("FFMPEG failed: %v\n%s", err, string(output)))
-			a.emitProgress(-1, "Conversion failed", "")
-			return
-		}
-		a.emitProgress(1, "FFMPEG conversion completed", string(output))
-		
-		// Step 2: Inject metadata
-		a.emitProgress(2, "Injecting metadata into M2V file...", "")
-		if err := injectMetadata(m2vFile); err != nil {
-			a.emitProgress(2, "", fmt.Sprintf("Metadata injection failed: %v", err))
-			a.emitProgress(-1, "Conversion failed", "")
-			return
-		}
-		a.emitProgress(2, "Metadata injected successfully", "")
-		
-		// Step 3: Append sequence end code
-		a.emitProgress(3, "Appending sequence end code...", "")
-		if err := appendSequenceEndCode(m2vFile); err != nil {
-			a.emitProgress(3, "", fmt.Sprintf("Failed to append end code: %v", err))
-			a.emitProgress(-1, "Conversion failed", "")
-			return
-		}
-		a.emitProgress(3, "Sequence end code appended", "")
-		
-		// Step 4: Generate ADS audio
-		a.emitProgress(4, "Generating ADS audio with PS2STR...", "")
-		cmd = exec.Command(ps2strPath, "e", "-o", "-v", "-d", outputDir, wavFile)
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			HideWindow:    true,
 			CreationFlags: 0x08000000,
 		}
-		output, err = cmd.CombinedOutput()
+		
+		out, err := cmd.CombinedOutput()
 		if err != nil {
-			a.emitProgress(4, "", fmt.Sprintf("PS2STR audio encoding failed: %v\n%s", err, string(output)))
-			a.emitProgress(-1, "Conversion failed", "")
+			a.emit(1, "", fmt.Sprintf("FFMPEG failed: %v\n%s", err, string(out)))
+			a.emit(-1, "Conversion failed", "")
 			return
 		}
-		a.emitProgress(4, "ADS audio generated", string(output))
+		a.emit(1, "FFMPEG conversion completed", string(out))
 		
-		// Step 5: Create mux file
-		a.emitProgress(5, "Creating project file...", "")
+		a.emit(2, "Injecting metadata into M2V file...", "")
+		if err := injectMeta(m2v); err != nil {
+			a.emit(2, "", fmt.Sprintf("Metadata injection failed: %v", err))
+			a.emit(-1, "Conversion failed", "")
+			return
+		}
+		a.emit(2, "Metadata injected successfully", "")
+		
+		a.emit(3, "Appending sequence end code...", "")
+		if err := appendEnd(m2v); err != nil {
+			a.emit(3, "", fmt.Sprintf("Failed to append end code: %v", err))
+			a.emit(-1, "Conversion failed", "")
+			return
+		}
+		a.emit(3, "Sequence end code appended", "")
+		
+		a.emit(4, "Generating ADS audio with PS2STR...", "")
+		cmd = exec.Command(ps2str, "e", "-o", "-v", "-d", outDir, wav)
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			HideWindow:    true,
+			CreationFlags: 0x08000000,
+		}
+		out, err = cmd.CombinedOutput()
+		if err != nil {
+			a.emit(4, "", fmt.Sprintf("PS2STR audio encoding failed: %v\n%s", err, string(out)))
+			a.emit(-1, "Conversion failed", "")
+			return
+		}
+		a.emit(4, "ADS audio generated", string(out))
+		
+		a.emit(5, "Creating project file...", "")
 		muxContent := fmt.Sprintf(`pss
 
 	stream video:0
@@ -203,131 +191,123 @@ func (a *App) ConvertToPSS(inputFile, outputFile string, width, height, bitrate 
 		input "%s"
 	end
 end
-`, filepath.ToSlash(m2vFile), filepath.ToSlash(adsFile))
+`, filepath.ToSlash(m2v), filepath.ToSlash(ads))
 		
-		if err := os.WriteFile(muxFile, []byte(muxContent), 0644); err != nil {
-			a.emitProgress(5, "", fmt.Sprintf("Failed to create mux file: %v", err))
-			a.emitProgress(-1, "Conversion failed", "")
+		if err := os.WriteFile(mux, []byte(muxContent), 0644); err != nil {
+			a.emit(5, "", fmt.Sprintf("Failed to create mux file: %v", err))
+			a.emit(-1, "Conversion failed", "")
 			return
 		}
-		a.emitProgress(5, "Project file created", "")
+		a.emit(5, "Project file created", "")
 		
-		// Step 6: Multiplex PSS
-		a.emitProgress(6, "Multiplexing PSS file with PS2STR...", "")
-		cmd = exec.Command(ps2strPath, "m", "-o", "-v", "-d", outputDir, muxFile)
+		a.emit(6, "Multiplexing PSS file with PS2STR...", "")
+		cmd = exec.Command(ps2str, "m", "-o", "-v", "-d", outDir, mux)
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			HideWindow:    true,
 			CreationFlags: 0x08000000,
 		}
-		output, err = cmd.CombinedOutput()
+		out, err = cmd.CombinedOutput()
 		if err != nil {
-			a.emitProgress(6, "", fmt.Sprintf("PS2STR multiplexing failed: %v\n%s", err, string(output)))
-			a.emitProgress(-1, "Conversion failed", "")
+			a.emit(6, "", fmt.Sprintf("PS2STR multiplexing failed: %v\n%s", err, string(out)))
+			a.emit(-1, "Conversion failed", "")
 			return
 		}
-		a.emitProgress(6, "PSS file created successfully!", string(output))
+		a.emit(6, "PSS file created successfully!", string(out))
 		
-		// Cleanup
-		if !keepFiles {
-			os.Remove(m2vFile)
-			os.Remove(wavFile)
-			os.Remove(adsFile)
-			os.Remove(muxFile)
+		if !keep {
+			os.Remove(m2v)
+			os.Remove(wav)
+			os.Remove(ads)
+			os.Remove(mux)
 		}
 		
-		a.emitProgress(7, "Conversion completed successfully!", "")
+		a.emit(7, "Conversion completed successfully!", "")
 	}()
 }
 
-// ConvertToMP4 converts PSS to MP4 format
-func (a *App) ConvertToMP4(inputFile, outputFile string, keepFiles bool) {
+func (a *App) ConvertToMP4(inFile, outFile string, keep bool) {
 	go func() {
 		exePath, _ := os.Executable()
 		baseDir := filepath.Dir(exePath)
 		
-		// 在开发模式下，使用当前工作目录
 		if strings.Contains(exePath, "go-build") || strings.Contains(exePath, "Temp") {
 			baseDir, _ = os.Getwd()
 		}
 		
-		ffmpegPath := filepath.Join(baseDir, "ffmpeg.exe")
-		ps2strPath := filepath.Join(baseDir, "bin", "ps2str.exe")
-		vgmstreamPath := filepath.Join(baseDir, "bin", "vgmstream-cli.exe")
+		ffmpeg := filepath.Join(baseDir, "ffmpeg.exe")
+		ps2str := filepath.Join(baseDir, "bin", "ps2str.exe")
+		vgm := filepath.Join(baseDir, "bin", "vgmstream-cli.exe")
 		
-		pssDir := filepath.Dir(inputFile)
-		baseName := strings.TrimSuffix(filepath.Base(inputFile), filepath.Ext(inputFile))
-		m2vFile := filepath.Join(pssDir, baseName+"_video_0.m2v")
-		adsFile := filepath.Join(pssDir, baseName+"_pcm_0.ads")
-		wavFile := filepath.Join(pssDir, baseName+"_temp.wav")
+		pssDir := filepath.Dir(inFile)
+		base := strings.TrimSuffix(filepath.Base(inFile), filepath.Ext(inFile))
+		m2v := filepath.Join(pssDir, base+"_video_0.m2v")
+		ads := filepath.Join(pssDir, base+"_pcm_0.ads")
+		wav := filepath.Join(pssDir, base+"_temp.wav")
 		
-		// Step 1: Demultiplex PSS
-		a.emitProgress(1, "Demultiplexing PSS file with PS2STR...", "")
-		cmd := exec.Command(ps2strPath, "d", "-o", "-v", "-d", pssDir, inputFile)
+		a.emit(1, "Demultiplexing PSS file with PS2STR...", "")
+		cmd := exec.Command(ps2str, "d", "-o", "-v", "-d", pssDir, inFile)
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			HideWindow:    true,
 			CreationFlags: 0x08000000,
 		}
-		output, err := cmd.CombinedOutput()
+		out, err := cmd.CombinedOutput()
 		if err != nil {
-			a.emitProgress(1, "", fmt.Sprintf("PS2STR demultiplexing failed: %v\n%s", err, string(output)))
-			a.emitProgress(-1, "Conversion failed", "")
+			a.emit(1, "", fmt.Sprintf("PS2STR demultiplexing failed: %v\n%s", err, string(out)))
+			a.emit(-1, "Conversion failed", "")
 			return
 		}
-		a.emitProgress(1, "PSS demultiplexed successfully", string(output))
+		a.emit(1, "PSS demultiplexed successfully", string(out))
 		
-		// Step 2: Convert audio
-		a.emitProgress(2, "Converting audio with vgmstream-cli...", "")
-		cmd = exec.Command(vgmstreamPath, "-o", wavFile, adsFile)
+		a.emit(2, "Converting audio with vgmstream-cli...", "")
+		cmd = exec.Command(vgm, "-o", wav, ads)
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			HideWindow:    true,
 			CreationFlags: 0x08000000,
 		}
-		output, err = cmd.CombinedOutput()
+		out, err = cmd.CombinedOutput()
 		if err != nil {
-			a.emitProgress(2, "", fmt.Sprintf("Audio conversion failed: %v\n%s", err, string(output)))
-			a.emitProgress(-1, "Conversion failed", "")
+			a.emit(2, "", fmt.Sprintf("Audio conversion failed: %v\n%s", err, string(out)))
+			a.emit(-1, "Conversion failed", "")
 			return
 		}
-		a.emitProgress(2, "Audio converted successfully", string(output))
+		a.emit(2, "Audio converted successfully", string(out))
 		
-		// Step 3: Multiplex MP4
-		a.emitProgress(3, "Multiplexing MP4 file with FFMPEG...", "")
-		cmd = exec.Command(ffmpegPath,
-			"-i", m2vFile,
-			"-i", wavFile,
+		a.emit(3, "Multiplexing MP4 file with FFMPEG...", "")
+		cmd = exec.Command(ffmpeg,
+			"-i", m2v,
+			"-i", wav,
 			"-c:v", "copy",
 			"-c:a", "aac",
 			"-b:a", "192k",
-			"-y", outputFile,
+			"-y", outFile,
 		)
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			HideWindow:    true,
 			CreationFlags: 0x08000000,
 		}
-		output, err = cmd.CombinedOutput()
+		out, err = cmd.CombinedOutput()
 		if err != nil {
-			a.emitProgress(3, "", fmt.Sprintf("FFMPEG multiplexing failed: %v\n%s", err, string(output)))
-			a.emitProgress(-1, "Conversion failed", "")
+			a.emit(3, "", fmt.Sprintf("FFMPEG multiplexing failed: %v\n%s", err, string(out)))
+			a.emit(-1, "Conversion failed", "")
 			return
 		}
-		a.emitProgress(3, "MP4 file created successfully!", string(output))
+		a.emit(3, "MP4 file created successfully!", string(out))
 		
-		// Cleanup
-		if !keepFiles {
-			os.Remove(m2vFile)
-			os.Remove(adsFile)
-			os.Remove(wavFile)
+		if !keep {
+			os.Remove(m2v)
+			os.Remove(ads)
+			os.Remove(wav)
 		}
 		
-		a.emitProgress(4, "Conversion completed successfully!", "")
+		a.emit(4, "Conversion completed successfully!", "")
 	}()
 }
 
-func (a *App) emitProgress(step int, message, output string) {
-	runtime.EventsEmit(a.ctx, "conversion:progress", ConversionProgress{
+func (a *App) emit(step int, msg, out string) {
+	runtime.EventsEmit(a.ctx, "conversion:progress", Progress{
 		Step:    step,
-		Message: message,
-		Output:  output,
+		Message: msg,
+		Output:  out,
 	})
 }
 
@@ -336,29 +316,29 @@ func fileExists(path string) bool {
 	return err == nil
 }
 
-func injectMetadata(m2vPath string) error {
+func injectMeta(m2vPath string) error {
 	content, err := os.ReadFile(m2vPath)
 	if err != nil {
 		return err
 	}
 	
-	gopStartCode := []byte{0x00, 0x00, 0x01, 0xb8}
-	userDataStartCode := []byte{0x00, 0x00, 0x01, 0xb2}
-	metadataComment := "==== Created with PSSpectrum. Powered by FFMPEG, PS2STR, and VGMSTREAM.|||https://github.com/Ailyth99/PSSpectrum ===="
+	gopStart := []byte{0x00, 0x00, 0x01, 0xb8}
+	userStart := []byte{0x00, 0x00, 0x01, 0xb2}
+	meta := "==== Created with PSSpectrum. Powered by FFMPEG, PS2STR, and VGMSTREAM.|||https://github.com/Ailyth99/PSSpectrum ===="
 	
-	insertionPoint := indexOf(content, gopStartCode)
-	if insertionPoint == -1 {
+	pos := indexOf(content, gopStart)
+	if pos == -1 {
 		return fmt.Errorf("GOP start code not found")
 	}
 	
-	payload := append(userDataStartCode, []byte(metadataComment)...)
-	newContent := append(content[:insertionPoint], append(payload, content[insertionPoint:]...)...)
+	payload := append(userStart, []byte(meta)...)
+	newContent := append(content[:pos], append(payload, content[pos:]...)...)
 	
 	return os.WriteFile(m2vPath, newContent, 0644)
 }
 
-func appendSequenceEndCode(m2vPath string) error {
-	sequenceEndCode := []byte{0x00, 0x00, 0x01, 0xb7}
+func appendEnd(m2vPath string) error {
+	endCode := []byte{0x00, 0x00, 0x01, 0xb7}
 	
 	info, err := os.Stat(m2vPath)
 	if err != nil {
@@ -371,7 +351,7 @@ func appendSequenceEndCode(m2vPath string) error {
 			return err
 		}
 		defer f.Close()
-		_, err = f.Write(sequenceEndCode)
+		_, err = f.Write(endCode)
 		return err
 	}
 	
@@ -380,8 +360,8 @@ func appendSequenceEndCode(m2vPath string) error {
 		return err
 	}
 	
-	lastFour := content[len(content)-4:]
-	if string(lastFour) == string(sequenceEndCode) {
+	last := content[len(content)-4:]
+	if string(last) == string(endCode) {
 		return nil
 	}
 	
@@ -391,7 +371,7 @@ func appendSequenceEndCode(m2vPath string) error {
 	}
 	defer f.Close()
 	
-	_, err = f.Write(sequenceEndCode)
+	_, err = f.Write(endCode)
 	return err
 }
 
