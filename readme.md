@@ -4,9 +4,10 @@ A small tool to help you cconvert PSS videos for PlayStation 2 games.
 *   **Convert to PSS:** Convert standard video files (like MP4, MKV) from your PC into the PSS format that PS2 games can use.
 *   **Convert to MP4:** Convert PSS files from a game back into MP4, making them easy to watch and edit.
 *   **Adjustable Quality:** If your final PSS file is too large, you can lower the video bitrate or resolution in the tool to reduce its size.
-*   **Automatic Freeze Fix:** Automatically checks for and adds a sequence end code to the M2V video. This is a key fix that prevents the final PSS from freezing on its last frame when played in-game.
 
 I've tested this on a bunch of PS2 games, and it works pretty well most of the time. However, some games use special PSS files, like those with multiple audio tracks, and this tool probably won't be able to handle those. If a conversion fails, you'll likely have to dig into the official PS2 SDK documentation for more info.
+
+Note: Some injected PSS files may play normally but freeze on the last frame. This happens because the game internally records the file size of the original PSS. If the new PSS size does not match this recorded value, it causes a conflict and the game hangs. To fix this, you need to locate where the game stores the original file size and update it to match the file size (in bytes) of your new PSS.
 
 ###  How to Use
 
