@@ -10,7 +10,7 @@ I've tested this on a bunch of PS2 games, and it works pretty well most of the t
 
 ###  How to Use
 
-![PSSpectrum Interface](https://pic1.imgdb.cn/item/690c14e33203f7be00daead5.png)
+![](https://pic1.imgdb.cn/item/696cd422e8f4cc17ae672aa6.png)
 
 ```
 PSSpectrum/
@@ -20,6 +20,20 @@ PSSpectrum/
 │
 ├─ ffmpeg.exe
 └─ main program
+```
+
+
+###  Build
+
+Prerequisites
+
+- Go 1.21 or higher
+- Node.js and npm
+- Wails CLI v2: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+
+```bash
+cd 
+wails build
 ```
 
 注意，路径及文件名别带中文字符，否则必报错
