@@ -412,6 +412,13 @@
   flex-shrink: 0;
 }
 
+.alert.alert-success::before {
+  background: repeating-linear-gradient(45deg, #1d2027da, #1d2027da 10px, #89c7d6a0 10px, #89c7d6a0 20px) !important;
+  background-position: 0 0 !important;
+  background-size: 198px 400px !important;
+  animation: progress 5s linear 0s infinite normal !important;
+}
+
 @keyframes alert-fly-in {
   0% {
     opacity: 0;
@@ -465,7 +472,7 @@
   position: relative;
 }
 
-.alert-success {
+.alert-success .alert-content {
   background-image: url('./types/success.png');
   background-size: auto 100%;
   background-repeat: repeat-x;
@@ -473,7 +480,7 @@
   animation: scrollRight 36s linear infinite;
 }
 
-.alert-warning {
+.alert-warning .alert-content {
   background-image: url('./types/warning.png');
   background-size: auto 100%;
   background-repeat: repeat-x;
@@ -481,8 +488,12 @@
   animation: scrollRight 36s linear infinite;
 }
 
-.alert-info {
-  /* 没有背景图，不滚动 */
+.alert-size .alert-content {
+  background-image: url('./types/size_warning.png');
+  background-size: auto 100%;
+  background-repeat: repeat-x;
+  background-position: center;
+  animation: scrollRight 36s linear infinite;
 }
 
 .alert-content p {
@@ -491,6 +502,10 @@
   animation: text-flash 0.1s 3 ease-in-out 0.3s;
   font-size: 1.1rem;
   color: #fa8455;
+}
+
+.alert.alert-success p {
+  color: #89c7d6 !important;
 }
 
 .alert button {
@@ -511,8 +526,16 @@
   transition: background-color 0.3s ease;
 }
 
+.alert.alert-success button {
+  background-color: #89c7d6a0 !important;
+}
+
 .alert button:hover {
   background-color: #3c4251d0;
+}
+
+.alert.alert-success button:hover {
+  background-color: #89c7d6d0 !important;
 }
 
 .checkbox-group {

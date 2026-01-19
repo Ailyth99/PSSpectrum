@@ -39,7 +39,7 @@ const App: React.FC = () => {
   const [logs, setLogs] = useState<string[]>([]);
   const [alert, setAlert] = useState(false);
   const [alertMsg, setAlertMsg] = useState('');
-  const [alertType, setAlertType] = useState<'success' | 'warning' | 'info'>('info');
+  const [alertType, setAlertType] = useState<'success' | 'warning' | 'info' | 'size'>('info');
   
   const logRef = useRef<HTMLDivElement>(null);
   const tab1TitleRef = useRef<HTMLHeadingElement>(null);
@@ -136,7 +136,7 @@ const App: React.FC = () => {
     setLogs((prev: string[]) => [...prev, msg]);
   };
 
-  const showMsg = (msg: string, type: 'success' | 'warning' | 'info' = 'info') => {
+  const showMsg = (msg: string, type: 'success' | 'warning' | 'info' | 'size' = 'info') => {
     setAlertMsg(msg);
     setAlertType(type);
     setAlert(true);
@@ -177,6 +177,21 @@ const App: React.FC = () => {
     
     if (width <= 0 || height <= 0 || bitrate <= 0) {
       showMsg(t.invalidValues, 'warning');
+      return;
+    }
+    
+    if (width % 16 !== 0 || height % 16 !== 0) {
+      showMsg(language === 'zh' ? '宽或高必须是16的倍数' : 'Width or height must be a multiple of 16', 'size');
+      return;
+    }
+    
+    if (width < 32 || width > 720 || height < 32 || height > 480) {
+      showMsg(
+        language === 'zh' 
+          ? '分辨率超出范围！宽度: 32-720, 高度: 32-480' 
+          : 'Resolution out of range! Width: 32-720, Height: 32-480', 
+        'size'
+      );
       return;
     }
     
@@ -238,8 +253,8 @@ const App: React.FC = () => {
       {alert && (
         <>
           <div className="overlay" onClick={closeAlert}></div>
-          <div className="alert">
-            <div className={`alert-content alert-${alertType}`}>
+          <div className={`alert alert-${alertType}`}>
+            <div className="alert-content">
               <p>{alertMsg}</p>
             </div>
             <button onClick={closeAlert} className='crt'>OK</button>
