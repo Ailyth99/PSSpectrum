@@ -36,12 +36,13 @@ export const translations = {
     checkLog: 'Please check the log for details.',
     
     // Log messages
-    appTitle: 'PSSpectrum - PS2 PSS Video Converter v1.0',
-    checkingDeps: 'Checking dependencies...',
+    appTitle: 'PSSpectrum - PS2 PSS Video Converter v1.1 - Ailyth99',
+    checkingDeps: 'https://github.com/Ailyth99/PSSpectrum',
     found: 'Found',
     missing: 'Missing',
     warningMissingDeps: '[WARNING] Missing dependencies:',
     placeDepsMsg: 'Please place required executables in the program directory.',
+    ffmpegDownload: 'Download FFMPEG.EXE: https://www.ffmpeg.org/download.html',
     allDepsFound: 'All dependencies found. Ready to convert!',
     startingMp4ToPss: 'Starting MP4 to PSS conversion...',
     startingPssToMp4: 'Starting PSS to MP4 conversion...',
@@ -83,12 +84,13 @@ export const translations = {
     checkLog: '请查看日志了解详情。',
     
     // 日志消息
-    appTitle: 'PSSpectrum - PS2 PSS 视频转换器 v1.0',
-    checkingDeps: '正在检查依赖项...',
+    appTitle: 'PSSpectrum - PS2 PSS 视频转换器 v1.1 - aikika',
+    checkingDeps: 'https://github.com/Ailyth99/PSSpectrum',
     found: '已找到',
     missing: '缺失',
     warningMissingDeps: '[警告] 缺少依赖项：',
     placeDepsMsg: '请将所需的可执行文件放在程序目录中。',
+    ffmpegDownload: '下载 FFMPEG.EXE: https://www.ffmpeg.org/download.html',
     allDepsFound: '所有依赖项已找到。准备转换！',
     startingMp4ToPss: '开始 MP4 转 PSS 转换...',
     startingPssToMp4: '开始 PSS 转 MP4 转换...',

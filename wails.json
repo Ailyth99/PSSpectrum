@@ -8,14 +8,14 @@
   "frontend:dev:serverUrl": "auto",
   "author": {
     "name": "Ailyth99",
-    "email": "your@email.com"
+    "email": "aikikarius@email.com"
   },
   "info": {
-    "companyName": "Ailyth99",
+    "companyName": "AENSLAND",
     "productName": "PSSpectrum",
-    "productVersion": "1.0.0",
-    "copyright": "Copyright © 2024",
-    "comments": "PS2 PSS Video Converter",
+    "productVersion": "1.1.0",
+    "copyright": "Copyright © 2026",
+    "comments": "PS2 PSS Video Converter - aikika/Ailyth99",
     "icon": "icon.ico"
   }
 }

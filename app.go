@@ -150,23 +150,19 @@ func (a *App) ConvertToPSS(inFile, outFile string, w, h, br int, keep bool) {
 		}
 		a.emit(1, "FFMPEG conversion completed", string(out))
 		
-		a.emit(2, "Injecting metadata into M2V file...", "")
 		if err := injectMeta(m2v); err != nil {
 			a.emit(2, "", fmt.Sprintf("Metadata injection failed: %v", err))
 			a.emit(-1, "Conversion failed", "")
 			return
 		}
-		a.emit(2, "Metadata injected successfully", "")
 		
-		a.emit(3, "Appending sequence end code...", "")
 		if err := appendEnd(m2v); err != nil {
-			a.emit(3, "", fmt.Sprintf("Failed to append end code: %v", err))
+			a.emit(2, "", fmt.Sprintf("Failed to append end code: %v", err))
 			a.emit(-1, "Conversion failed", "")
 			return
 		}
-		a.emit(3, "Sequence end code appended", "")
 		
-		a.emit(4, "Generating ADS audio with PS2STR...", "")
+		a.emit(2, "Generating ADS audio with PS2STR...", "")
 		cmd = exec.Command(ps2str, "e", "-o", "-v", "-d", outDir, wav)
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			HideWindow:    true,
@@ -174,13 +170,13 @@ func (a *App) ConvertToPSS(inFile, outFile string, w, h, br int, keep bool) {
 		}
 		out, err = cmd.CombinedOutput()
 		if err != nil {
-			a.emit(4, "", fmt.Sprintf("PS2STR audio encoding failed: %v\n%s", err, string(out)))
+			a.emit(2, "", fmt.Sprintf("PS2STR audio encoding failed: %v\n%s", err, string(out)))
 			a.emit(-1, "Conversion failed", "")
 			return
 		}
-		a.emit(4, "ADS audio generated", string(out))
+		a.emit(2, "ADS audio generated", string(out))
 		
-		a.emit(5, "Creating project file...", "")
+		a.emit(3, "Creating project file...", "")
 		muxContent := fmt.Sprintf(`pss
 
 	stream video:0
@@ -194,13 +190,13 @@ end
 `, filepath.ToSlash(m2v), filepath.ToSlash(ads))
 		
 		if err := os.WriteFile(mux, []byte(muxContent), 0644); err != nil {
-			a.emit(5, "", fmt.Sprintf("Failed to create mux file: %v", err))
+			a.emit(3, "", fmt.Sprintf("Failed to create mux file: %v", err))
 			a.emit(-1, "Conversion failed", "")
 			return
 		}
-		a.emit(5, "Project file created", "")
+		a.emit(3, "Project file created", "")
 		
-		a.emit(6, "Multiplexing PSS file with PS2STR...", "")
+		a.emit(4, "Multiplexing PSS file with PS2STR...", "")
 		cmd = exec.Command(ps2str, "m", "-o", "-v", "-d", outDir, mux)
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			HideWindow:    true,
@@ -208,11 +204,11 @@ end
 		}
 		out, err = cmd.CombinedOutput()
 		if err != nil {
-			a.emit(6, "", fmt.Sprintf("PS2STR multiplexing failed: %v\n%s", err, string(out)))
+			a.emit(4, "", fmt.Sprintf("PS2STR multiplexing failed: %v\n%s", err, string(out)))
 			a.emit(-1, "Conversion failed", "")
 			return
 		}
-		a.emit(6, "PSS file created successfully!", string(out))
+		a.emit(4, "PSS file created successfully!", string(out))
 		
 		if !keep {
 			os.Remove(m2v)
@@ -221,7 +217,7 @@ end
 			os.Remove(mux)
 		}
 		
-		a.emit(7, "Conversion completed successfully!", "")
+		a.emit(5, "Conversion completed successfully!", "")
 	}()
 }
 

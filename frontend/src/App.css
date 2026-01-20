@@ -314,6 +314,16 @@
   word-break: break-all;
 }
 
+.log-error {
+  color: #fa8455;
+  font-weight: bold;
+}
+
+.log-success {
+  color: #89c7d6;
+  font-weight: bold;
+}
+
 .log-empty {
   color: #5a6a6a;
   font-style: italic;

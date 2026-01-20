@@ -16,7 +16,7 @@ func main() {
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:  "PSSpectrum - PS2 PSS Converter",
+		Title:  "PSSpectrum - PS2 PSS Converter - aikika/Ailyth99",
 		Width:  733,
 		Height: 800,
 

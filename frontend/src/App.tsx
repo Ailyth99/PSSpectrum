@@ -78,9 +78,9 @@ const App: React.FC = () => {
   }, [logs]);
 
   useEffect(() => {
-    const waves = ' ﹊﹍﹎﹋﹌﹏';
-    const bricks = '░░▒▓█';
-    const lines = '├─┼┴┬┤';
+    const waves = ' ﹊﹍﹋～﹏';
+    const bricks = '░░▒';
+    const lines = '┼┴┬┤';
     
     const refs = activeTab === 'mp4ToPss' 
       ? [tab1TitleRef.current, tab1DescRef.current]
@@ -113,9 +113,9 @@ const App: React.FC = () => {
     addLog(t.checkingDeps);
     const deps = await CheckDependencies();
     
-    addLog(`  FFMPEG:    ${deps.ffmpeg ? `✓ ${t.found}` : `✗ ${t.missing}`}`);
-    addLog(`  PS2STR:    ${deps.ps2str ? `✓ ${t.found}` : `✗ ${t.missing}`}`);
-    addLog(`  VGMSTREAM: ${deps.vgmstream ? `✓ ${t.found}` : `✗ ${t.missing}`}`);
+    addLog(`  FFMPEG:    ${deps.ffmpeg ? `✓ ${t.found}` : `✗ ${t.missing}`}`, !deps.ffmpeg);
+    addLog(`  PS2STR:    ${deps.ps2str ? `✓ ${t.found}` : `✗ ${t.missing}`}`, !deps.ps2str);
+    addLog(`  VGMSTREAM: ${deps.vgmstream ? `✓ ${t.found}` : `✗ ${t.missing}`}`, !deps.vgmstream);
     addLog('');
     
     const missing = Object.entries(deps)
@@ -123,8 +123,11 @@ const App: React.FC = () => {
       .map(([name, _]) => name);
     
     if (missing.length > 0) {
-      addLog(`${t.warningMissingDeps} ${missing.join(', ')}`);
-      addLog(t.placeDepsMsg);
+      addLog(`${t.warningMissingDeps} ${missing.join(', ')}`, true);
+      addLog(t.placeDepsMsg, true);
+      if (missing.includes('ffmpeg')) {
+        addLog(t.ffmpegDownload, true);
+      }
       addLog('');
     } else {
       addLog(t.allDepsFound);
@@ -132,8 +135,8 @@ const App: React.FC = () => {
     }
   };
 
-  const addLog = (msg: string) => {
-    setLogs((prev: string[]) => [...prev, msg]);
+  const addLog = (msg: string, isError: boolean = false) => {
+    setLogs((prev: string[]) => [...prev, isError ? `ERROR:${msg}` : msg]);
   };
 
   const showMsg = (msg: string, type: 'success' | 'warning' | 'info' | 'size' = 'info') => {
@@ -410,11 +413,25 @@ const App: React.FC = () => {
         <h3 className="animated-text-reveal crt">{t.conversionLog}</h3>
         <div className="log-container" ref={logRef}>
           {logs.length > 0 ? (
-            logs.map((log, idx) => (
-              <div key={idx} className="log-entry">
-                {log}
-              </div>
-            ))
+            logs.map((log, idx) => {
+              const isError = log.startsWith('ERROR:');
+              const isSuccess = log.includes('completed successfully') || log.includes('成功完成');
+              const isFailed = log.toLowerCase().includes('failed') || log.includes('失败');
+              const displayLog = isError ? log.substring(6) : log;
+              
+              let className = 'log-entry';
+              if (isError || isFailed) {
+                className += ' log-error';
+              } else if (isSuccess) {
+                className += ' log-success';
+              }
+              
+              return (
+                <div key={idx} className={className}>
+                  {displayLog}
+                </div>
+              );
+            })
           ) : (
             <div className="log-empty">{t.noLogsYet}</div>
           )}
